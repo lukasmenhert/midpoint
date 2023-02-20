@@ -30,11 +30,15 @@ public enum Command {
 //
 //    TEST("test", TestResourceOptions.class, null, TestResourceRestAction.class),
 //
-    KEYS("keys", ListKeysOptions.class, ListKeysRepositoryAction.class, null);
+    KEYS("keys", ListKeysOptions.class, ListKeysRepositoryAction.class, null),
 //
 //    TRANSFORM("transform", TransformOptions.class, TransformRepositoryAction.class, null),
 //
 //    SCHEMA("schema", SchemaOptions.class, SchemaRepositoryAction.class, null);
+
+    REGENERATE_UUID_INIT("regenerateUuidInit", RegenerateUuidInitOptions.class, RegenerateUuidInitRepositoryAction.class, null),
+
+    REGENERATE_UUID("regenerateUuid", RegenerateUuidOptions.class, RegenerateUuidRepositoryAction.class, null);
 
     // todo reencrypt, modify, bulk, etc
 

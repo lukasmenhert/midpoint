@@ -32,9 +32,6 @@ public class ExportOptions extends BaseImportExportOptions {
     @Parameter(names = {P_OVERWRITE, P_OVERWRITE_LONG}, descriptionKey = "export.overwrite")
     private boolean overwrite;
 
-//    @Parameter(names = {P_SPLIT, P_SPLIT_LONG}, descriptionKey = "export.split")
-//    private boolean split;
-
     public File getOutput() {
         return output;
     }
@@ -43,7 +40,4 @@ public class ExportOptions extends BaseImportExportOptions {
         return overwrite;
     }
 
-//    public boolean isSplit() {
-//        return split;
-//    }
 }

@@ -185,7 +185,7 @@ public class NinjaUtils {
     public static List<ObjectTypes> getTypes(Set<ObjectTypes> selected) {
         List<ObjectTypes> types = new ArrayList<>();
 
-        if (selected != null && !   selected.isEmpty()) {
+        if (selected != null && !selected.isEmpty()) {
             types.addAll(selected);
         } else {
             for (ObjectTypes type : ObjectTypes.values()) {
