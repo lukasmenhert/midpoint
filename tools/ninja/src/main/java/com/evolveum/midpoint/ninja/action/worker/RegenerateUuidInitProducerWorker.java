@@ -9,13 +9,11 @@ package com.evolveum.midpoint.ninja.action.worker;
 
 import com.evolveum.midpoint.ninja.impl.NinjaContext;
 import com.evolveum.midpoint.ninja.impl.NinjaException;
-import com.evolveum.midpoint.ninja.opts.ExportOptions;
 import com.evolveum.midpoint.ninja.opts.RegenerateUuidInitOptions;
 import com.evolveum.midpoint.ninja.util.Log;
 import com.evolveum.midpoint.ninja.util.NinjaUtils;
 import com.evolveum.midpoint.ninja.util.OperationStatus;
 import com.evolveum.midpoint.prism.PrismObject;
-import com.evolveum.midpoint.prism.query.ObjectQuery;
 import com.evolveum.midpoint.repo.api.RepositoryService;
 import com.evolveum.midpoint.schema.GetOperationOptionsBuilder;
 import com.evolveum.midpoint.schema.ResultHandler;
@@ -32,7 +30,8 @@ public class RegenerateUuidInitProducerWorker extends BaseWorker<RegenerateUuidI
 
     private ObjectTypes type;
 
-    public RegenerateUuidInitProducerWorker(NinjaContext context, RegenerateUuidInitOptions options, BlockingQueue<PrismObject> queue,
+    public RegenerateUuidInitProducerWorker(NinjaContext context, RegenerateUuidInitOptions options,
+                                            BlockingQueue<PrismObject> queue,
                                             OperationStatus operation, List<RegenerateUuidInitProducerWorker> producers,
                                             ObjectTypes type) {
         super(context, options, queue, operation, producers);
@@ -58,7 +57,8 @@ public class RegenerateUuidInitProducerWorker extends BaseWorker<RegenerateUuidI
             };
 
             RepositoryService repository = context.getRepository();
-            repository.searchObjectsIterative(type.getClassDefinition(), null, handler, optionsBuilder.build(), true, operation.getResult());
+            repository.searchObjectsIterative(type.getClassDefinition(),
+                    null, handler, optionsBuilder.build(), true, operation.getResult());
         } catch (SchemaException ex) {
             log.error("Unexpected exception, reason: {}", ex, ex.getMessage());
         } catch (NinjaException ex) {

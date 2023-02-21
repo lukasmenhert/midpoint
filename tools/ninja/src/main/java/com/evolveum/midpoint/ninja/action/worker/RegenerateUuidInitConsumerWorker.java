@@ -19,19 +19,16 @@ import com.evolveum.midpoint.util.exception.SchemaException;
 import com.evolveum.midpoint.xml.ns._public.common.common_3.*;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 public class RegenerateUuidInitConsumerWorker extends BaseWorker<RegenerateUuidInitOptions, PrismObject> {
 
     private File inputMap;
     private boolean trailsEmptyLine = true;
-    private static final String DEFAULT_INPUT_MAP_FILENAME = "input-map.csv";
+    public static final String DEFAULT_INPUT_MAP_FILENAME = "input-map.csv";
     private static final char INPUT_MAP_DELIMITER = ';';
 
     private HashMap<String, String> oidToUuid = new HashMap<>();
@@ -113,17 +110,32 @@ public class RegenerateUuidInitConsumerWorker extends BaseWorker<RegenerateUuidI
         inputMap = options.getInputMap();
         if (inputMap == null) {
             inputMap = new File("./" + DEFAULT_INPUT_MAP_FILENAME);
+        }
+
+        if (!inputMap.exists()) {
+            try {
+                inputMap.createNewFile();
+            } catch (IOException e) {
+                throw new IllegalStateException("Couldn't create input map file '" + inputMap.getPath() + "'", e);
+            }
         } else {
-            try (Stream<String> stream = Files.lines(Paths.get(inputMap.getPath()))) {
-                stream.forEach((line) -> {
+            try (
+                    FileReader fr = new FileReader(inputMap, context.getCharset());
+                    BufferedReader reader = new BufferedReader(fr);
+            ) {
+                String line = reader.readLine();
+
+                while (line != null) {
                     String[] columns = line.split("" + INPUT_MAP_DELIMITER);
                     if (columns.length == 2) {
                         oidToUuid.put(columns[0].trim(), columns[1].trim());
                     } else {
-                        log.info("Line '{}' doesnt contain two values separated by '{}', skipping.",
+                        log.info("Line '{}' of input map doesn't contain two values separated by '{}', skipping.",
                                 line, INPUT_MAP_DELIMITER);
                     }
-                });
+                    // read next line
+                    line = reader.readLine();
+                }
             } catch (IOException e) {
                 throw new NinjaException("There was error while reading '" + inputMap.getPath() + "' file.", e);
             }

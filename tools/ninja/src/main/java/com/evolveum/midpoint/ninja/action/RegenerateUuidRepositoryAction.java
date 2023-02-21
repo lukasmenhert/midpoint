@@ -6,33 +6,21 @@
  */
 package com.evolveum.midpoint.ninja.action;
 
-import com.evolveum.midpoint.ninja.action.worker.ExportConsumerWorker;
 import com.evolveum.midpoint.ninja.action.worker.ProgressReporterWorker;
-import com.evolveum.midpoint.ninja.action.worker.SearchProducerWorker;
+import com.evolveum.midpoint.ninja.action.worker.RegenerateUuidInitProducerWorker;
 import com.evolveum.midpoint.ninja.impl.NinjaException;
-import com.evolveum.midpoint.ninja.opts.ConnectionOptions;
-import com.evolveum.midpoint.ninja.opts.ExportOptions;
 import com.evolveum.midpoint.ninja.opts.RegenerateUuidOptions;
 import com.evolveum.midpoint.ninja.util.Log;
 import com.evolveum.midpoint.ninja.util.NinjaUtils;
 import com.evolveum.midpoint.ninja.util.OperationStatus;
 import com.evolveum.midpoint.prism.PrismObject;
-import com.evolveum.midpoint.prism.query.InOidFilter;
-import com.evolveum.midpoint.prism.query.ObjectFilter;
-import com.evolveum.midpoint.prism.query.ObjectQuery;
-import com.evolveum.midpoint.prism.query.QueryFactory;
-import com.evolveum.midpoint.schema.constants.ObjectTypes;
 import com.evolveum.midpoint.schema.result.OperationResult;
-import com.evolveum.midpoint.util.exception.SchemaException;
-import com.evolveum.midpoint.xml.ns._public.common.common_3.ObjectType;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 /**
  * Ninja action realizing "regenerateUuid" command.
@@ -41,7 +29,7 @@ public class RegenerateUuidRepositoryAction extends RepositoryAction<RegenerateU
 
     private HashMap<String, String> oidToUuid = new HashMap<>();
     private File original;
-    private File modified; //  +.regenerated
+    private File modified; //  regenerated-.*
 
     private static final char INPUT_MAP_DELIMITER = ';';
 
@@ -59,7 +47,10 @@ public class RegenerateUuidRepositoryAction extends RepositoryAction<RegenerateU
         log.info("Starting " + getOperationShortName());
         operation.start();
 
-        // Reads input map and checks for file existence;
+        ExecutorService executor = Executors.newFixedThreadPool( 1);
+        executor.execute(new ProgressReporterWorker(context, options, null, operation));
+
+        // Reads input map and checks for input files existence
         init();
 
         // Generate new regenerated file based in input file-to-regenerate
@@ -70,16 +61,18 @@ public class RegenerateUuidRepositoryAction extends RepositoryAction<RegenerateU
             String line = reader.readLine();
 
             while (line != null) {
-                writer.write(substituteOids(line));
+                writer.write(substituteOids(line, operation));
                 writer.newLine();
                 writer.flush();
                 // read next line
                 line = reader.readLine();
             }
         }
-        // HERE^
 
         operation.finish();
+
+        executor.shutdown();
+        executor.awaitTermination(NinjaUtils.WAIT_FOR_EXECUTOR_FINISH, TimeUnit.DAYS);
 
         handleResultOnFinish(operation, "Finished " + getOperationShortName());
     }
@@ -126,25 +119,36 @@ public class RegenerateUuidRepositoryAction extends RepositoryAction<RegenerateU
         modified = new File(original.getParent() + "/regenerated-" + original.getName());
     }
 
-    private String substituteOids(String line) {
-        // Celé slovo (mezery)
-        // Dvojité uvozovky (““)
-        // Jednoduché uvozovky ('')
-        // V tagu >OID< (např. <value>OID</value>)
+    private String substituteOids(String line, OperationStatus operationStatus) {
+        // As a word ( oid )
+        // Double quoted ("oid")
+        // Single quoted ('oid')
+        // Value of xml element (<(/w)/s.*>oid<///w>)
+        String result = line;
 
         for (Map.Entry<String, String> entry : oidToUuid.entrySet()) {
             String oid = entry.getKey();
             String uuid = entry.getValue();
 
-            Pattern wordRegex = Pattern.compile("");
-            Pattern singleQuotedRegex = Pattern.compile("");
-            Pattern doubleQuotedRegex = Pattern.compile("");
-            Pattern elementValueRegex = Pattern.compile("");
+            String replacement = "$1" + uuid + "$3";
+            Pattern[] patterns = new Pattern[]{
+                    Pattern.compile("(^|\\s)(" + oid + ")(\\s|$)"),
+                    Pattern.compile("(')(" + oid + ")(')"),
+                    Pattern.compile("(\")(" + oid + ")(\")"),
+                    Pattern.compile("(>)(" + oid + ")(</)")
+            };
 
-            // Replace
+            for(int i = 0; i < patterns.length; i++) {
+                Matcher matcher = patterns[i].matcher(result);
+                result = matcher.replaceAll(replacement);
+                matcher.reset();
 
+                while (matcher.find()) {
+                    operationStatus.incrementTotal();
+                }
+            }
         }
 
-        return line;
+        return result;
     }
 }
