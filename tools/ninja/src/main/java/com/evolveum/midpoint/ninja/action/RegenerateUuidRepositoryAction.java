@@ -7,13 +7,11 @@
 package com.evolveum.midpoint.ninja.action;
 
 import com.evolveum.midpoint.ninja.action.worker.ProgressReporterWorker;
-import com.evolveum.midpoint.ninja.action.worker.RegenerateUuidInitProducerWorker;
 import com.evolveum.midpoint.ninja.impl.NinjaException;
 import com.evolveum.midpoint.ninja.opts.RegenerateUuidOptions;
 import com.evolveum.midpoint.ninja.util.Log;
 import com.evolveum.midpoint.ninja.util.NinjaUtils;
 import com.evolveum.midpoint.ninja.util.OperationStatus;
-import com.evolveum.midpoint.prism.PrismObject;
 import com.evolveum.midpoint.schema.result.OperationResult;
 
 import java.io.*;
@@ -55,18 +53,19 @@ public class RegenerateUuidRepositoryAction extends RepositoryAction<RegenerateU
 
         // Generate new regenerated file based in input file-to-regenerate
         try (
-            BufferedWriter writer = new BufferedWriter(new FileWriter(modified, false));
+            BufferedWriter writer = new BufferedWriter(new FileWriter(modified, false), 8192 * 2);
             BufferedReader reader = new BufferedReader(new FileReader(original, context.getCharset()));
         ) {
             String line = reader.readLine();
 
             while (line != null) {
-                writer.write(substituteOids(line, operation));
-                writer.newLine();
-                writer.flush();
+                writer.write(substituteOids(line, operation) + System.lineSeparator());
+
                 // read next line
                 line = reader.readLine();
             }
+
+            writer.flush();
         }
 
         operation.finish();
@@ -130,25 +129,25 @@ public class RegenerateUuidRepositoryAction extends RepositoryAction<RegenerateU
             String oid = entry.getKey();
             String uuid = entry.getValue();
 
-            String replacement = "$1" + uuid + "$3";
-            Pattern[] patterns = new Pattern[]{
-                    Pattern.compile("(^|\\s)(" + oid + ")(\\s|$)"),
-                    Pattern.compile("(')(" + oid + ")(')"),
-                    Pattern.compile("(\")(" + oid + ")(\")"),
-                    Pattern.compile("(>)(" + oid + ")(</)")
-            };
+            Pattern oidPattern = Pattern.compile(oid);
 
-            for(int i = 0; i < patterns.length; i++) {
-                Matcher matcher = patterns[i].matcher(result);
-                result = matcher.replaceAll(replacement);
-                matcher.reset();
+            if (oidPattern.matcher(result).find()) {
+                String replacement = "$1" + uuid + "$3";
+                Pattern[] patterns = new Pattern[]{
+                        Pattern.compile("(^|\\s)(" + oid + ")(\\s|$)"),
+                        Pattern.compile("(')(" + oid + ")(')"),
+                        Pattern.compile("(\")(" + oid + ")(\")"),
+                        Pattern.compile("(>)(" + oid + ")(</)")
+                };
 
-                while (matcher.find()) {
-                    operationStatus.incrementTotal();
+                for(int i = 0; i < patterns.length; i++) {
+                    Matcher matcher = patterns[i].matcher(result);
+                    result = matcher.replaceAll(replacement);
                 }
             }
         }
 
+        operationStatus.incrementTotal();
         return result;
     }
 }

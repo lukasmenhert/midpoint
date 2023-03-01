@@ -18,8 +18,11 @@ import java.io.File;
  */
 public class RegenerateUuidRepositoryTest {
 
+    //private static final String MIDPOINT_HOME = "/Users/lukasmenhert/Inalogy/Projects/midpoint-docker/compose/" +
+    //        "midpoint-4.0.4/midpoint-home-dev";
+
     private static final String MIDPOINT_HOME = "/Users/lukasmenhert/Inalogy/Projects/midpoint-docker/compose/" +
-            "midpoint-4.0.4/midpoint-home-dev";
+            "midpoint-4.0.4-prod/midpoint-home-dev";
 
     @Test
     public void regeneratePhaseInit() {
@@ -46,13 +49,12 @@ public class RegenerateUuidRepositoryTest {
         String[] input = new String[]{
                 "-m", MIDPOINT_HOME,
                 "regenerateUuid",
-                "-im", MIDPOINT_HOME + "/regen-map-a.csv",
-                "-fr", MIDPOINT_HOME + "/kdm_export.xml"
+                "-im", MIDPOINT_HOME + "/input-map.csv",
+                "-fr", MIDPOINT_HOME + "/export.xml"
         };
         Main.main(input);
     }
 
-    //@Test
     @Test(expectedExceptions = { IllegalStateException.class })
     public void regeneratePhaseMandatoryInputMapFileException() {
         String[] input = new String[]{
